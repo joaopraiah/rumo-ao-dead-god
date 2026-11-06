@@ -1,0 +1,402 @@
+<title>Rumo ao Dead God</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Karla:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: porão escuro — coluna única; painel de sugestões no topo, personagens em grade, lista completa embaixo */
+:root{
+  --bg:#130f0e; --surface:#1c1615; --raise:#251d1b; --line:#3b2d2a;
+  --fg:#ecdfd5; --muted:#a3918a; --blood:#c8352f; --gold:#d8a443; --soul:#86a9d6; --ok:#7fb069;
+  --display:"IM Fell English SC",Georgia,serif; --body:Karla,system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 60px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance}
+h1{font-size:clamp(2rem,5vw,3rem);line-height:1.05}
+h2{font-size:1.5rem;color:var(--gold)}
+h3{font-size:1.15rem}
+a{color:var(--soul)}
+.muted{color:var(--muted)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+button{font:inherit;cursor:pointer;border-radius:6px;border:1px solid var(--line);background:var(--raise);color:var(--fg);padding:8px 14px}
+button:hover{border-color:var(--muted)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button.primary{background:var(--blood);border-color:var(--blood);color:#fff;font-weight:700}
+button.primary:hover{filter:brightness(1.12)}
+
+header{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;justify-content:space-between}
+.eyebrow{font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--blood);font-weight:700}
+.meter{flex:1 1 320px;min-width:0}
+.meter .big{font-family:var(--mono);font-size:2.2rem;line-height:1}
+.bar{height:10px;background:var(--raise);border:1px solid var(--line);border-radius:5px;overflow:hidden;margin-top:8px}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--blood),var(--gold))}
+.meter .sub{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:8px;font-size:.88rem;color:var(--muted)}
+
+.load{border:1px dashed var(--line);border-radius:10px;padding:18px;display:grid;grid-template-columns:1fr auto;gap:12px 20px;align-items:center;background:var(--surface)}
+.load.drag{border-color:var(--gold)}
+.load .status{min-width:0}
+.load .status b{color:var(--fg)}
+.tag{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:4px;background:var(--raise);color:var(--muted);border:1px solid var(--line);vertical-align:middle}
+.tag.ex{color:var(--gold);border-color:#5b4523}
+.tag.gate{color:var(--soul);border-color:#33465f}
+.tag.lock{color:var(--blood);border-color:#5a2421}
+details.guide{grid-column:1/-1}
+details.guide summary{cursor:pointer;color:var(--soul);font-weight:600}
+.guide ol{margin:10px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px;max-width:72ch}
+code{font-family:var(--mono);font-size:.82rem;background:var(--raise);border:1px solid var(--line);border-radius:4px;padding:1px 5px;word-break:break-all}
+
+.picks{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel.hero{border-color:#5a2421;box-shadow:0 0 0 1px #2a1210 inset}
+.ach{display:flex;flex-direction:column;gap:3px;padding:10px 0;border-top:1px solid var(--line)}
+.ach:first-of-type{border-top:0;padding-top:0}
+.ach .t{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.ach .id{font-family:var(--mono);font-size:.78rem;color:var(--muted)}
+.ach .n{font-weight:700}
+.ach .h{color:var(--muted);font-size:.9rem}
+.top .n{font-size:1.2rem;color:var(--gold)}
+.top .h{color:var(--fg);font-size:1rem}
+.charpick{font-family:var(--display);font-size:2rem;line-height:1.1;color:var(--gold)}
+.rollbox{display:flex;flex-direction:column;gap:10px}
+.rollbox .goal{font-size:1.05rem}
+.rollbox ul{margin:0;padding-left:18px;color:var(--muted);font-size:.9rem}
+@keyframes flick{0%{opacity:.2;transform:translateY(4px)}100%{opacity:1;transform:none}}
+.flick{animation:flick .35s ease-out}
+@media (prefers-reduced-motion:reduce){.flick{animation:none}}
+
+.chars{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.ch{text-align:left;display:flex;flex-direction:column;gap:6px;padding:10px 12px;background:var(--surface)}
+.ch.sel{border-color:var(--gold);background:var(--raise)}
+.ch.locked{opacity:.55}
+.ch .nm{font-weight:700;font-size:.92rem;display:flex;justify-content:space-between;gap:6px}
+.ch .mini{height:5px;background:var(--raise);border-radius:3px;overflow:hidden}
+.ch .mini>i{display:block;height:100%;background:var(--gold)}
+.ch .c{font-size:.78rem;color:var(--muted)}
+.ch.done .nm{color:var(--ok)}
+.chhead{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:baseline}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{padding:5px 11px;font-size:.88rem}
+.seg button[aria-pressed=true]{border-color:var(--gold);color:var(--gold)}
+
+.listbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+input[type=search]{font:inherit;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:7px 11px;width:min(100%,280px)}
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:0 24px}
+.list .ach{border-top:1px solid var(--line);padding:10px 0}
+.list .ach.got .n{color:var(--ok)}
+.list .ach.got .n::before{content:"✓ ";}
+.list .ach.blocked{opacity:.6}
+.more{justify-self:start}
+footer{font-size:.8rem;color:var(--muted);max-width:72ch}
+@media (max-width:560px){.load{grid-template-columns:1fr}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">The Binding of Isaac · Repentance+</div>
+      <h1>Rumo ao Dead God</h1>
+    </div>
+    <div class="meter">
+      <div><span class="big" id="pct">0%</span> <span class="muted num" id="cnt">0 / 641</span></div>
+      <div class="bar"><i id="barfill" style="width:0"></i></div>
+      <div class="sub"><span id="items"></span><span id="chardone"></span><span id="deadgod"></span></div>
+    </div>
+  </header>
+
+  <section class="load" id="drop">
+    <div class="status" id="status"></div>
+    <div><input type="file" id="file" hidden><button class="primary" id="pick">Subir save</button></div>
+    <details class="guide" id="guide">
+      <summary>Onde fica o save?</summary>
+      <p style="margin:10px 0 0;max-width:72ch"><b>Opção A: conquistas da Steam (mais fácil, recomendado).</b> Lê exatamente as conquistas que aparecem no seu perfil da Steam.</p>
+      <ol>
+        <li>Na janela de escolher arquivo, cole na barra de endereço: <code>%ProgramFiles(x86)%\Steam\appcache\stats</code></li>
+        <li>Escolha o arquivo <code>UserGameStats_&lt;números&gt;_250900.bin</code> (250900 é o Isaac). Atenção: <b>não</b> é o que tem "Schema" no nome.</li>
+        <li>Abra o Isaac uma vez antes, pra Steam atualizar esse arquivo.</li>
+      </ol>
+      <p style="margin:14px 0 0;max-width:72ch"><b>Opção B: save do jogo.</b> Também conta os itens coletados (necessários pro Dead God).</p>
+      <ol>
+        <li>Abra a pasta da Steam: cole <code>%ProgramFiles(x86)%\Steam\userdata</code> na barra de endereço da janela de arquivo (ou no Explorer).</li>
+        <li>Entre na pasta com números (seu ID da Steam) e depois em <code>250900\remote</code>. Ficando: <code>…\userdata\&lt;seu-id&gt;\250900\remote</code></li>
+        <li>Escolha o arquivo do Repentance+: <code>rep+persistentgamedata1.dat</code>, <code>…2.dat</code> ou <code>…3.dat</code> (é o número do slot do save no jogo). Na dúvida, pegue o modificado mais recentemente.</li>
+        <li>Se aparecer só <code>rep_persistentgamedata</code>, esse é o save do Repentance antigo, que também funciona.</li>
+        <li>Pode arrastar o arquivo direto em cima desta caixa. Nada é enviado pra lugar nenhum: o arquivo é lido só no seu navegador e fica guardado nele pra próxima vez.</li>
+        <li>Dica: se tiver conquistas na Steam que não aparecem no jogo, no menu de estatísticas abra "Secrets" e aperte <code>Alt + F2</code> pra sincronizar.</li>
+      </ol>
+    </details>
+  </section>
+
+  <section class="picks">
+    <div class="panel hero">
+      <h2>Próxima conquista</h2>
+      <div id="next"></div>
+    </div>
+    <div class="panel">
+      <h2>Próximo personagem</h2>
+      <div id="nextchar"></div>
+    </div>
+    <div class="panel">
+      <h2>Sortear run</h2>
+      <p class="muted" style="margin:0">Sorteia um personagem que você já tem e um objetivo que dá pra fazer agora, pesando por quem tem mais coisa faltando.</p>
+      <div><button class="primary" id="roll">Sortear</button></div>
+      <div class="rollbox" id="rollout"></div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:12px">
+    <div class="chhead"><h2>Personagens</h2><span class="muted" style="font-size:.88rem">Clique pra filtrar a lista. Contagem = conquistas ligadas ao personagem.</span></div>
+    <div class="chars" id="chars"></div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:12px">
+    <div class="listbar">
+      <h2 id="listtitle">Conquistas</h2>
+      <div class="seg" id="tabs">
+        <button data-f="avail" aria-pressed="true">Dá pra fazer</button>
+        <button data-f="blocked" aria-pressed="false">Bloqueadas</button>
+        <button data-f="got" aria-pressed="false">Feitas</button>
+        <button data-f="all" aria-pressed="false">Todas</button>
+      </div>
+      <input type="search" id="q" placeholder="Buscar nome, chefe, personagem…">
+    </div>
+    <div class="list" id="list"></div>
+    <button class="more" id="more" hidden>Mostrar mais</button>
+  </section>
+
+  <footer>Nomes e requisitos vêm da wiki oficial (bindingofisaacrebirth.wiki.gg). O "bloqueada" é uma estimativa: considera se o personagem e a área/chefe necessários já foram liberados no save. Dead God também pede todos os itens coletados, por isso a contagem de itens no topo.</footer>
+</div>
+
+<script>
+const ACH = __ACH__;
+const SAMPLE = __SAMPLE__;
+const STEAMMAP = __STEAMMAP__;
+const BY = Object.fromEntries(ACH.map(a=>[a.id,a]));
+const TOTAL = ACH.length;
+const REMOVED_ITEMS = new Set([43,61,235,587,613,620,630,648,656,662,666,718]);
+const ITEM_TOTAL = 732 - REMOVED_ITEMS.size;
+
+const CHARS = [["Isaac",0],["Magdalene",1],["Cain",2],["Judas",3],["???",32],["Eve",42],["Samson",67],["Azazel",79],["Lazarus",80],["Eden",81],["The Lost",82],["Lilith",199],["Keeper",251],["Apollyon",340],["The Forgotten",390],["Bethany",404],["Jacob and Esau",405]];
+const ALLCH = [];
+CHARS.forEach(([n,u],i)=>ALLCH.push({name:n,unlock:u,tainted:false}));
+CHARS.forEach(([n,u],i)=>ALLCH.push({name:"Tainted "+({"Jacob and Esau":"Jacob","The Lost":"Lost","The Forgotten":"Forgotten"}[n]||n),unlock:474+i,tainted:true,base:n}));
+const CH_NAMES = ALLCH.map(c=>c.name).sort((a,b)=>b.length-a.length);
+const esc = s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+const CH_RE = new RegExp("\\b(?:as|with) (?:the )?("+CH_NAMES.map(esc).join("|")+")(?![\\w])","i");
+
+// chefe/área -> [tier, gates(any-of)]
+const BOSSES = [
+  ["The Beast",8,[635]],["Home",7,[635]],["Ultra Greedier",7,[341]],["Greedier",7,[341]],
+  ["Mother",6,[407]],["Corpse",6,[407]],["Mausoleum",5,[407]],["Delirium",6,[320]],["Void",6,[320]],
+  ["Hush",5,[234]],["Blue Womb",5,[234]],["Mega Satan",5,[57,78]],["Boss Rush",4,[4]],
+  ["The Lamb",4,[78]],["Dark Room",4,[78]],["???",4,[57]],["Chest",4,[57]],
+  ["Isaac",3,[4]],["Satan",3,[4]],["Ultra Greed",3,[4]],["It Lives",2,[4]],["Mom's Heart",2,[4]],["Mom",1,[]]
+];
+const PROGRESS_KEYS = new Set([4,34,57,78,234,320,341,407,635,415,...CHARS.map(c=>c[1]).filter(Boolean),...Array.from({length:17},(_,i)=>474+i)]);
+const META = new Set([637,636,84,276,547]);
+
+for(const a of ACH){
+  let h=a.h, m=h.match(CH_RE);
+  a.ch=null;
+  if(m){ const nm=m[1].toLowerCase(); a.ch=ALLCH.find(c=>c.name.toLowerCase()===nm)?.name||null; h=h.slice(0,m.index); }
+  if(!a.ch){ const m2=a.d.match(CH_RE); if(m2) a.ch=ALLCH.find(c=>c.name.toLowerCase()===m2[1].toLowerCase())?.name||null; }
+  if(a.id>=474&&a.id<=490) a.homeOf = ALLCH[a.id-474].name;
+  a.gates=[]; a.tier=3; a.boss=null; let top=-1;
+  let rest=h;
+  for(const [b,t,g] of BOSSES){
+    if(rest.includes(b)){ rest=rest.split(b).join(" "); if(g.length) a.gates.push(g); if(t>top){top=t;a.boss=b;} }
+  }
+  if(top>=0) a.tier=top;
+  if(a.homeOf){ a.gates.push([635]); a.tier=7; a.charGate=a.homeOf; }
+  if(META.has(a.id)) a.tier=9;
+  a.prog = PROGRESS_KEYS.has(a.id);
+}
+
+let state = {got:new Set(), items:null, src:null, sample:true};
+let view = {f:"avail", ch:null, q:"", lim:60};
+
+function charUnlocked(name){ const c=ALLCH.find(x=>x.name===name); return !c || c.unlock===0 || state.got.has(c.unlock); }
+function blockers(a){
+  const out=[];
+  if(a.ch && !charUnlocked(a.ch)) out.push(a.ch);
+  if(a.charGate && !charUnlocked(a.charGate)) out.push(a.charGate);
+  for(const g of a.gates) if(!g.some(x=>state.got.has(x))) out.push(BY[g[0]].n);
+  return out;
+}
+const missing = ()=>ACH.filter(a=>!state.got.has(a.id));
+const available = ()=>missing().filter(a=>!blockers(a).length && a.id!==637);
+function score(a){ return (a.prog?-100:0) + a.tier*10 + (a.ch&&a.ch.startsWith("Tainted")?3:0) + a.id/1000; }
+
+function achHTML(a,cls=""){
+  const b=state.got.has(a.id)?[]:blockers(a);
+  const tags=[];
+  if(a.prog && !state.got.has(a.id)) tags.push('<span class="tag gate">destrava progresso</span>');
+  if(b.length) tags.push('<span class="tag lock">precisa: '+b.map(x=>escH(x)).join(", ")+'</span>');
+  return `<div class="ach ${cls} ${state.got.has(a.id)?"got":""} ${b.length?"blocked":""}"><div class="t"><span class="id">#${a.id}</span><span class="n">${escH(a.n)}</span>${tags.join(" ")}</div><div class="h">${escH(a.h)}</div></div>`;
+}
+function escH(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+function charStats(){
+  return ALLCH.map(c=>{
+    const all=ACH.filter(a=>a.ch===c.name);
+    const got=all.filter(a=>state.got.has(a.id)).length;
+    const unl=charUnlocked(c.name);
+    const av=all.filter(a=>!state.got.has(a.id)&&!blockers(a).length);
+    return {...c,total:all.length,got,unl,av};
+  });
+}
+
+function render(){
+  const g=state.got.size;
+  document.getElementById("pct").textContent=(g/TOTAL*100).toFixed(1)+"%";
+  document.getElementById("cnt").textContent=`${g} / ${TOTAL} conquistas`;
+  document.getElementById("barfill").style.width=(g/TOTAL*100)+"%";
+  document.getElementById("items").textContent= state.items!=null?`Itens coletados: ${state.items} / ${ITEM_TOTAL}`:"";
+  const cs=charStats();
+  document.getElementById("chardone").textContent=`Personagens liberados: ${cs.filter(c=>c.unl).length} / ${cs.length}`;
+  document.getElementById("deadgod").textContent= state.got.has(637)?"DEAD GOD conquistado!":`Faltam ${TOTAL-g-(state.got.has(637)?0:1)} pro Dead God`;
+
+  const st=document.getElementById("status");
+  st.innerHTML = state.sample
+    ? `<span class="tag ex">exemplo</span> Mostrando um save de exemplo (Repentance, 211 conquistas). <b>Suba o seu save</b> pra ver o de vocês.`
+    : `<b>${escH(state.src)}</b> <span class="muted">· carregado ${new Date(state.at).toLocaleString("pt-BR")}</span><br><span class="muted">Jogou mais? Suba de novo o mesmo arquivo pra atualizar.</span>`;
+
+  // próxima conquista
+  const av=available().sort((a,b)=>score(a)-score(b));
+  const nx=document.getElementById("next");
+  if(!av.length) nx.innerHTML='<p class="muted">Nada disponível. Ou vocês zeraram, ou o save não carregou direito.</p>';
+  else nx.innerHTML = achHTML(av[0],"top") + '<div class="muted" style="font-size:.8rem;margin-top:6px">Também dá pra fazer agora:</div>' + av.slice(1,5).map(a=>achHTML(a)).join("");
+
+  // próximo personagem
+  const pick=cs.filter(c=>c.unl&&c.av.length).sort((a,b)=>{
+    const ta=Math.min(...a.av.map(x=>x.tier)), tb=Math.min(...b.av.map(x=>x.tier));
+    return ta-tb || b.av.length-a.av.length;
+  })[0];
+  const nc=document.getElementById("nextchar");
+  const lockedNext = ACH.filter(a=>ALLCH.some(c=>c.unlock===a.id)&&!state.got.has(a.id)&&!blockers(a).length);
+  if(pick){
+    const bosses=[...new Set(pick.av.sort((a,b)=>a.tier-b.tier).map(a=>a.boss).filter(Boolean))];
+    nc.innerHTML=`<div class="charpick">${escH(pick.name)}</div>
+      <div><span class="num">${pick.got}/${pick.total}</span> <span class="muted">feitas · ${pick.av.length} dá pra fazer agora</span></div>
+      ${bosses.length?`<div class="muted" style="font-size:.9rem">Rota sugerida: ${bosses.slice(0,4).map(escH).join(" → ")}</div>`:""}
+      ${pick.av.sort((a,b)=>a.tier-b.tier).slice(0,3).map(a=>achHTML(a)).join("")}
+      <div><button id="seechar">Ver tudo do ${escH(pick.name)}</button></div>`;
+    document.getElementById("seechar").onclick=()=>{view.ch=pick.name;view.f="all";syncTabs();renderChars(cs);renderList();document.getElementById("list").scrollIntoView({behavior:"smooth"});};
+  } else nc.innerHTML='<p class="muted">Nenhum personagem com conquista disponível.</p>';
+  if(lockedNext.length) nc.insertAdjacentHTML("beforeend",`<div class="muted" style="font-size:.85rem;border-top:1px solid var(--line);padding-top:10px">Personagem pra liberar: <b style="color:var(--fg)">${escH(lockedNext[0].n)}</b> · ${escH(lockedNext[0].h)}</div>`);
+
+  renderChars(cs); renderList();
+}
+
+function renderChars(cs){
+  const el=document.getElementById("chars");
+  el.innerHTML=cs.map(c=>{
+    const p=c.total?c.got/c.total*100:0;
+    return `<button class="ch ${c.unl?"":"locked"} ${view.ch===c.name?"sel":""} ${c.total&&c.got===c.total?"done":""}" data-ch="${escH(c.name)}" aria-pressed="${view.ch===c.name}">
+      <span class="nm"><span>${escH(c.name)}</span>${c.unl?"":'<span class="tag lock">🔒</span>'}</span>
+      <span class="mini"><i style="width:${p}%"></i></span>
+      <span class="c num">${c.got}/${c.total}${c.unl&&c.av.length?` · ${c.av.length} agora`:""}</span></button>`;
+  }).join("");
+  el.querySelectorAll(".ch").forEach(b=>b.onclick=()=>{view.ch=view.ch===b.dataset.ch?null:b.dataset.ch;view.lim=60;renderChars(charStats());renderList();});
+}
+
+function renderList(){
+  let xs=ACH.slice();
+  if(view.f==="avail") xs=available().sort((a,b)=>score(a)-score(b));
+  else if(view.f==="blocked") xs=missing().filter(a=>blockers(a).length).sort((a,b)=>a.tier-b.tier||a.id-b.id);
+  else if(view.f==="got") xs=xs.filter(a=>state.got.has(a.id));
+  if(view.ch) xs=xs.filter(a=>a.ch===view.ch||a.homeOf===view.ch||ALLCH.find(c=>c.name===view.ch)?.unlock===a.id);
+  if(view.q){const q=view.q.toLowerCase();xs=xs.filter(a=>(a.n+" "+a.h+" "+a.d+" "+a.id).toLowerCase().includes(q));}
+  document.getElementById("listtitle").textContent=`Conquistas${view.ch?" · "+view.ch:""} (${xs.length})`;
+  document.getElementById("list").innerHTML=xs.slice(0,view.lim).map(a=>achHTML(a)).join("")||'<p class="muted">Nada aqui.</p>';
+  const more=document.getElementById("more"); more.hidden=xs.length<=view.lim;
+}
+function syncTabs(){document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.f===view.f));}
+
+document.getElementById("tabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;view.f=b.dataset.f;view.lim=60;syncTabs();renderList();};
+document.getElementById("q").oninput=e=>{view.q=e.target.value.trim();view.lim=60;renderList();};
+document.getElementById("more").onclick=()=>{view.lim+=120;renderList();};
+
+// sorteio
+document.getElementById("roll").onclick=()=>{
+  const out=document.getElementById("rollout");
+  const av=available();
+  const chall=av.filter(a=>/challenge #\d+/i.test(a.h));
+  if(chall.length && Math.random()<0.15){
+    const c=chall[Math.floor(Math.random()*chall.length)];
+    out.innerHTML=`<div class="flick"><div class="charpick">Desafio</div><div class="goal">${escH(c.h)}</div>${achHTML(c)}</div>`;return;
+  }
+  const cs=charStats().filter(c=>c.unl&&c.av.length);
+  if(!cs.length){out.innerHTML='<p class="muted">Nada pra sortear.</p>';return;}
+  const w=cs.reduce((s,c)=>s+c.av.length,0);let r=Math.random()*w,ch=cs[0];
+  for(const c of cs){r-=c.av.length;if(r<=0){ch=c;break;}}
+  const withBoss=ch.av.filter(a=>a.boss);
+  const pool=withBoss.length?withBoss:ch.av;
+  const goal=pool[Math.floor(Math.random()*pool.length)];
+  const same=ch.av.filter(a=>a!==goal&&goal.boss&&a.boss===goal.boss);
+  out.innerHTML=`<div class="flick rollbox"><div class="charpick">${escH(ch.name)}</div>
+    <div class="goal">Objetivo: <b>${escH(goal.boss?("derrotar "+goal.boss):goal.n)}</b></div>
+    ${achHTML(goal)}
+    ${same.length?`<div class="muted" style="font-size:.85rem">Na mesma run também sai:</div><ul>${same.map(a=>`<li>${escH(a.n)} · ${escH(a.h)}</li>`).join("")}</ul>`:""}</div>`;
+};
+
+// leitura do save
+function parseSave(buf){
+  const d=new DataView(buf), u8=new Uint8Array(buf);
+  const head=String.fromCharCode(...u8.slice(0,14));
+  if(!head.startsWith("ISAACNGSAVE")) throw new Error("Esse arquivo não parece um save do Isaac. Use o persistentgamedata (não o gamestate).");
+  let o=0x14, ach=null, items=null;
+  for(let i=0;i<32 && o+12<=u8.length;i++){
+    const t=d.getUint32(o,true), len=d.getUint32(o+4,true), c=d.getUint32(o+8,true); o+=12;
+    if(t===1) ach=u8.slice(o,o+c);
+    if(t===4) items=u8.slice(o,o+c);
+    o+=len;
+  }
+  if(!ach) throw new Error("Não achei o bloco de conquistas nesse arquivo.");
+  const got=[]; for(let i=1;i<ach.length;i++) if(ach[i]) got.push(i);
+  let seen=null; if(items){seen=0;for(let i=1;i<items.length&&i<=732;i++) if(items[i]&&!REMOVED_ITEMS.has(i)) seen++;}
+  return {got,items:seen};
+}
+// arquivo de conquistas da Steam (appcache/stats/UserGameStats_*_250900.bin): KeyValues binário
+function parseSteam(buf){
+  const d=new DataView(buf),u8=new Uint8Array(buf);let o=0;
+  const cs=()=>{let e=u8.indexOf(0,o);const s=new TextDecoder().decode(u8.subarray(o,e));o=e+1;return s;};
+  const obj=()=>{const r={};for(;;){const t=u8[o++];if(t===8||t===undefined)return r;const k=cs();
+    if(t===0)r[k]=obj();else if(t===1)r[k]=cs();else if(t===2||t===3||t===4||t===6){r[k]=d.getInt32(o,true);o+=4;}
+    else if(t===7||t===10){o+=8;}else throw new Error("Formato da Steam desconhecido.");}};
+  const root=obj(), c=root.cache||root, got=[];
+  for(const k in STEAMMAP){const s=c[k];if(!s||typeof s.data!=="number")continue;
+    for(let b=0;b<32;b++) if((s.data>>>b)&1 && STEAMMAP[k][b]) got.push(STEAMMAP[k][b]);}
+  if(!Object.keys(c).length) throw new Error("Arquivo da Steam vazio. Abra o Isaac uma vez e tente de novo.");
+  return {got,items:null};
+}
+function loadFile(f){
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      if(/schema/i.test(f.name)) throw new Error("Esse é o arquivo de Schema. Use o UserGameStats_<números>_250900.bin (sem 'Schema').");
+      const first=new Uint8Array(r.result)[0];
+      const p= first===0x49 ? parseSave(r.result) : parseSteam(r.result);
+      state={got:new Set(p.got),items:p.items,src:f.name,at:Date.now(),sample:false};
+      try{localStorage.setItem("isaac-save",JSON.stringify({got:p.got,items:p.items,src:f.name,at:state.at}));}catch(e){}
+      document.getElementById("guide").open=false; render();
+    }catch(e){document.getElementById("status").innerHTML=`<span class="tag lock">erro</span> ${escH(e.message)}`;}
+  };
+  r.readAsArrayBuffer(f);
+}
+const fi=document.getElementById("file");
+document.getElementById("pick").onclick=()=>fi.click();
+fi.onchange=()=>fi.files[0]&&loadFile(fi.files[0]);
+const drop=document.getElementById("drop");
+drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("drag");});
+drop.addEventListener("dragleave",()=>drop.classList.remove("drag"));
+drop.addEventListener("drop",e=>{e.preventDefault();drop.classList.remove("drag");const f=e.dataTransfer.files[0];if(f)loadFile(f);});
+
+(function init(){
+  let saved=null; try{saved=JSON.parse(localStorage.getItem("isaac-save")||"null");}catch(e){}
+  if(saved&&saved.got) state={got:new Set(saved.got),items:saved.items,src:saved.src,at:saved.at,sample:false};
+  else { state={got:new Set(SAMPLE.u),items:SAMPLE.items,src:"exemplo",sample:true}; document.getElementById("guide").open=true; }
+  render();
+})();
+</script>
