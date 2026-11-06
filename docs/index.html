@@ -215,7 +215,7 @@ footer{max-width:1180px;margin:30px auto 0;font-size:.8rem;color:var(--muted)}
         <div class="top">
           <div class="status" id="status"></div>
           <div class="actions" id="actions">
-            <button class="btn" id="auto"><svg class="i"><use href="#i-sync"/></svg><span id="autolbl">Buscar save no PC</span></button>
+            <a class="btn" id="auto" href="RumoAoDeadGod.bat" download="RumoAoDeadGod.bat" style="text-decoration:none"><svg class="i"><use href="#i-sync"/></svg>Baixar atalho</a>
             <button class="btn dark small" id="pick"><svg class="i"><use href="#i-up"/></svg>Escolher arquivo</button>
             <input type="file" id="file" multiple hidden>
           </div>
@@ -224,15 +224,15 @@ footer{max-width:1180px;margin:30px auto 0;font-size:.8rem;color:var(--muted)}
           <summary>Como funciona / onde fica o save?</summary>
           <div class="cols">
             <div>
-              <h3><svg class="i"><use href="#i-folder"/></svg>Automático <span class="note">(Chrome ou Edge)</span></h3>
-              <p class="lead"><em>Só na primeira vez:</em> você aponta a pasta da Steam e daí em diante o site lê sozinho, juntando conquistas da Steam + save do jogo.</p>
+              <h3><svg class="i"><use href="#i-folder"/></svg>Automático <span class="note">(Windows)</span></h3>
+              <p class="lead"><em>Dois cliques e pronto:</em> um atalho que pega as conquistas da Steam + o save do jogo e abre o site já com tudo.</p>
               <ol class="steps">
-                <li><span>Clique em <b>Buscar save no PC</b>.</span></li>
-                <li><span>Na janela, cole isto na barra de endereço e dê Enter:<br><span class="copy"><code>C:\Program Files (x86)\Steam</code><button data-copy="C:\Program Files (x86)\Steam" aria-label="Copiar caminho"><svg class="i"><use href="#i-copy"/></svg></button></span></span></li>
-                <li><span>Clique em <b>Selecionar pasta</b> e depois em <b>Ver arquivos / Permitir</b>.</span></li>
-                <li><span>Pronto. Nas próximas vezes ele já carrega sozinho; se o navegador pedir, é só clicar em <b>Atualizar do PC</b> e permitir.</span></li>
+                <li><span>Clique em <b>Baixar atalho</b> e salve o arquivo <code>RumoAoDeadGod.bat</code> onde quiser (na Área de Trabalho fica fácil).</span></li>
+                <li><span>Dê dois cliques nele. Se o Windows mostrar "O Windows protegeu o computador", clique em <b>Mais informações</b> → <b>Executar assim mesmo</b> (só na primeira vez).</span></li>
+                <li><span>Ele acha a Steam sozinho, lê as conquistas e o save do Isaac e abre este site já carregado.</span></li>
+                <li><span>Jogou mais? Clique no atalho de novo e está atualizado.</span></li>
               </ol>
-              <p class="note" style="margin-top:10px">O site só lê os arquivos do Isaac. Nada sai do seu computador.</p>
+              <p class="note" style="margin-top:10px">O atalho só lê os arquivos do Isaac e manda pro site pelo próprio link. Nada é enviado pra servidor nenhum. O código dele está aberto no GitHub.</p>
             </div>
             <div>
               <h3><svg class="i"><use href="#i-file"/></svg>Manual <span class="note">(qualquer navegador)</span></h3>
@@ -412,7 +412,7 @@ function render(){
 function renderStatus(){
   const st=$("status");
   if(state.err){ st.innerHTML=`<span class="stamp err">erro</span><p>${escH(state.err)}</p>`; return; }
-  if(state.sample){ st.innerHTML=`<span class="stamp">exemplo</span><p>Mostrando um save de exemplo (211 conquistas).<br><b>Clique em Buscar save no PC</b> pra ver o seu.</p>`; return; }
+  if(state.sample){ st.innerHTML=`<span class="stamp">exemplo</span><p>Mostrando um save de exemplo (211 conquistas).<br><b>Baixe o atalho</b> (ou escolha os arquivos) pra ver o seu.</p>`; return; }
   const when=state.at?new Date(state.at).toLocaleString("pt-BR"):"";
   st.innerHTML=`<span class="stamp live">${state.auto?"auto":"carregado"}</span><div><p><b>${escH(state.label)}</b></p><p class="note">${escH(when)}${state.slots&&state.slots.length>1?' · slot: <select class="slot" id="slotsel" aria-label="Escolher slot do save">'+state.slots.map((s,i)=>`<option value="${i}" ${i===state.slotIdx?"selected":""}>${escH(s.name)} (${s.got.length})</option>`).join("")+'</select>':""}</p></div>`;
   const sel=$("slotsel"); if(sel) sel.onchange=()=>{applyFound(state.found,+sel.value);};
@@ -532,60 +532,28 @@ drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("drag
 drop.addEventListener("dragleave",()=>drop.classList.remove("drag"));
 drop.addEventListener("drop",e=>{e.preventDefault();drop.classList.remove("drag");if(e.dataTransfer.files.length)readFiles([...e.dataTransfer.files]);});
 
-// ---------- leitura automática da pasta da Steam (File System Access API) ----------
-const FS_OK = "showDirectoryPicker" in window;
-const idb=(mode,fn)=>new Promise((res,rej)=>{const r=indexedDB.open("isaac-dg",1);r.onupgradeneeded=()=>r.result.createObjectStore("kv");
-  r.onsuccess=()=>{const tx=r.result.transaction("kv",mode);const q=fn(tx.objectStore("kv"));tx.oncomplete=()=>res(q&&q.result);tx.onerror=()=>rej(tx.error);};r.onerror=()=>rej(r.error);});
-const getHandle=()=>idb("readonly",s=>s.get("steam")).catch(()=>null);
-const setHandle=h=>idb("readwrite",s=>s.put(h,"steam")).catch(()=>{});
-async function sub(dir,name){try{return await dir.getDirectoryHandle(name);}catch(e){return null;}}
-
-async function scanSteam(root){
-  // aceita a pasta Steam, a userdata ou a remote
-  let userdata=await sub(root,"userdata"), stats=null, ids=[];
-  const appcache=await sub(root,"appcache"); if(appcache) stats=await sub(appcache,"stats");
-  if(!userdata && root.name.toLowerCase()==="userdata") userdata=root;
-  const found={steam:null,slots:[],auto:true};
-  const remotes=[];
-  if(userdata){ for await (const [n,h] of userdata.entries()){ if(h.kind!=="directory")continue; const g=await sub(h,"250900"); const r=g&&await sub(g,"remote"); if(r) remotes.push([n,r]); } }
-  else remotes.push(["",root]);
-  let best=null;
-  for(const [id,r] of remotes){
-    for await (const [n,h] of r.entries()){
-      if(h.kind!=="file"||!/^(rep\+|rep_)persistentgamedata\d\.dat$/i.test(n))continue;
-      const f=await h.getFile(); try{const p=parseSave(await f.arrayBuffer());
-        const s={name:slotName(n),got:p.got,items:p.items,mod:f.lastModified,id};found.slots.push(s);
-        if(!best||f.lastModified>best.mod) best=s;}catch(e){}
-    }
-  }
-  if(stats){
-    const want=best&&best.id; let pickF=null;
-    for await (const [n,h] of stats.entries()){
-      const m=n.match(/^UserGameStats_(\d+)_250900\.bin$/i); if(!m)continue;
-      const f=await h.getFile(); if(!pickF||m[1]===want||(pickF.id!==want&&f.lastModified>pickF.f.lastModified)) pickF={f,id:m[1]};
-    }
-    if(pickF){ try{found.steam=parseSteam(await pickF.f.arrayBuffer());}catch(e){} }
-  }
-  if(best) found.slots=found.slots.filter(s=>s.id===best.id);
-  if(!found.steam&&!found.slots.length) throw new Error(`Não achei arquivos do Isaac em "${root.name}". Escolha a pasta Steam (C:\\Program Files (x86)\\Steam).`);
-  return found;
-}
-async function autoLoad(interactive){
-  let h=await getHandle();
+// ---------- importação automática (atalho RumoAoDeadGod.bat manda os arquivos pelo link: #import=<gzip+base64url>) ----------
+const b64bytes=s=>{s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";const bin=atob(s),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u;};
+async function importFromHash(){
+  const m=location.hash.match(/^#import=([\w-]+)/); if(!m) return false;
+  history.replaceState(null,"",location.pathname+location.search);
   try{
-    if(!h){ if(!interactive)return false; h=await window.showDirectoryPicker({id:"steam",mode:"read"}); await setHandle(h); }
-    let perm=await h.queryPermission({mode:"read"});
-    if(perm!=="granted"){ if(!interactive){ $("autolbl").textContent="Atualizar do PC"; return false; } perm=await h.requestPermission({mode:"read"}); }
-    if(perm!=="granted") return false;
-    const found=await scanSteam(h);
-    $("autolbl").textContent="Atualizar do PC";
+    const gz=b64bytes(m[1]);
+    const txt=await new Response(new Blob([gz]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+    let list=JSON.parse(txt); if(!Array.isArray(list)) list=[list];
+    const found={steam:null,slots:[],auto:true};
+    // conta mais recente = a que jogou por último
+    const saves=list.filter(f=>/persistentgamedata/i.test(f.n)).sort((a,b)=>b.t-a.t);
+    const acct=saves[0]?.id;
+    for(const f of saves){ if(acct&&f.id!==acct) continue;
+      try{const u=b64bytes(f.d);const p=parseSave(u.buffer);found.slots.push({name:slotName(f.n),got:p.got,items:p.items,mod:f.t});}catch(e){} }
+    const stats=list.filter(f=>/^UserGameStats_/i.test(f.n)).sort((a,b)=>(b.id===acct)-(a.id===acct)||b.t-a.t);
+    if(stats[0]){ try{found.steam=parseSteam(b64bytes(stats[0].d).buffer);}catch(e){} }
+    if(!found.steam&&!found.slots.length) throw new Error("O atalho não achou arquivos do Isaac nesse PC.");
     applyFound(found); return true;
-  }catch(e){ if(e.name!=="AbortError"&&interactive) fail(e.message); return false; }
+  }catch(e){ fail("Não deu pra ler o que o atalho mandou: "+e.message); return false; }
 }
-$("auto").onclick=async()=>{
-  if(!FS_OK){ fail("Seu navegador não deixa sites lerem pastas. Use Chrome ou Edge, ou o botão Escolher arquivo."); $("guide").open=true; return; }
-  await autoLoad(true);
-};
+window.addEventListener("hashchange",importFromHash);
 
 // copiar caminhos
 document.addEventListener("click",e=>{const b=e.target.closest("[data-copy]");if(!b)return;
@@ -609,11 +577,10 @@ document.querySelectorAll(".torn").forEach(tear);
 
 // ---------- início ----------
 (async function init(){
-  if(!FS_OK) $("auto").hidden=true, $("guide").open=true;
   let saved=null; try{saved=JSON.parse(localStorage.getItem("isaac-state")||"null");}catch(e){}
   if(saved&&saved.found){ applyFound(saved.found,saved.slotIdx); state.at=saved.at; renderStatus(); }
   else { state={got:new Set(SAMPLE.u),items:SAMPLE.items,sample:true}; $("guide").open=true; render(); }
-  if(FS_OK){ const h=await getHandle(); if(h){ $("autolbl").textContent="Atualizar do PC"; autoLoad(false); } }
+  await importFromHash();
 })();
 </script>
 
